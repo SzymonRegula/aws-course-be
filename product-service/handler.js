@@ -1,6 +1,6 @@
 "use strict";
 
-const products = require("./mockData");
+const { v4: uuidv4 } = require("uuid");
 
 const AWS = require("aws-sdk");
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
@@ -75,7 +75,7 @@ module.exports.getProductsById = async (event) => {
 
     const mergedProduct = {
       ...product,
-      count: stock.count ?? 0,
+      count: stock ? stock.count : 0,
     };
 
     return {
@@ -89,6 +89,34 @@ module.exports.getProductsById = async (event) => {
       body: JSON.stringify({
         message: `Cannot find product with id: ${productId}`,
       }),
+    };
+  }
+};
+
+module.exports.createProduct = async (event) => {
+  const { title, description, price } = JSON.parse(event.body);
+  const product = {
+    id: uuidv4(),
+    title,
+    description,
+    price,
+  };
+  const params = {
+    TableName: process.env.PRODUCTS_TABLE_NAME,
+    Item: product,
+  };
+
+  try {
+    await dynamoDb.put(params).promise();
+    return {
+      statusCode: 201,
+      body: JSON.stringify(product),
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ message: "Cannot create product" }),
     };
   }
 };
