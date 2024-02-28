@@ -1,28 +1,122 @@
 "use strict";
 
-const products = require("./mockData");
+const { v4: uuidv4 } = require("uuid");
+
+const AWS = require("aws-sdk");
+const dynamoDb = new AWS.DynamoDB.DocumentClient();
 
 module.exports.getProductsList = async (event) => {
-  return {
-    statusCode: 200,
-    body: JSON.stringify(products),
+  const productsParams = {
+    TableName: process.env.PRODUCTS_TABLE_NAME,
   };
+  const stocksParams = {
+    TableName: process.env.STOCKS_TABLE_NAME,
+  };
+  try {
+    const productsDataPromise = dynamoDb.scan(productsParams).promise();
+    const stocksDataPromise = dynamoDb.scan(stocksParams).promise();
 
-  // Use this code if you don't use the http event with the LAMBDA-PROXY integration
-  // return { message: 'Go Serverless v1.0! Your function executed successfully!', event };
+    const [productsData, stocksData] = await Promise.all([
+      productsDataPromise,
+      stocksDataPromise,
+    ]);
+
+    const mergedData = productsData.Items.map((product) => {
+      const stock = stocksData.Items.find(
+        (item) => item.product_id === product.id
+      );
+      return {
+        ...product,
+        count: stock ? stock.count : 0,
+      };
+    });
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify(mergedData),
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ message: "Cannot fetch products" }),
+    };
+  }
 };
 
 module.exports.getProductsById = async (event) => {
   const { productId } = event.pathParameters;
-  const product = products.find((p) => p.id === productId);
-  if (!product) {
+  const productParams = {
+    TableName: process.env.PRODUCTS_TABLE_NAME,
+    KeyConditionExpression: "id = :id",
+    ExpressionAttributeValues: {
+      ":id": productId,
+    },
+  };
+  const stockParams = {
+    TableName: process.env.STOCKS_TABLE_NAME,
+    KeyConditionExpression: "product_id = :product_id",
+    ExpressionAttributeValues: {
+      ":product_id": productId,
+    },
+  };
+
+  try {
+    const productDataPromise = dynamoDb.query(productParams).promise();
+    const stockDataPromise = dynamoDb.query(stockParams).promise();
+
+    const [productData, stockData] = await Promise.all([
+      productDataPromise,
+      stockDataPromise,
+    ]);
+
+    const product = productData?.Items[0];
+    const stock = stockData?.Items[0];
+
+    const mergedProduct = {
+      ...product,
+      count: stock ? stock.count : 0,
+    };
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify(mergedProduct),
+    };
+  } catch (error) {
+    console.error(error);
     return {
       statusCode: 404,
-      body: JSON.stringify({ message: "Product not found" }),
+      body: JSON.stringify({
+        message: `Cannot find product with id: ${productId}`,
+      }),
     };
   }
-  return {
-    statusCode: 200,
-    body: JSON.stringify(product),
+};
+
+module.exports.createProduct = async (event) => {
+  const { title, description, price } = JSON.parse(event.body);
+  const product = {
+    id: uuidv4(),
+    title,
+    description,
+    price,
   };
+  const params = {
+    TableName: process.env.PRODUCTS_TABLE_NAME,
+    Item: product,
+  };
+
+  try {
+    await dynamoDb.put(params).promise();
+    return {
+      statusCode: 201,
+      body: JSON.stringify(product),
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ message: "Cannot create product" }),
+    };
+  }
 };
