@@ -20,6 +20,9 @@ service: product-service
 # Check out our docs for more details
 frameworkVersion: "3"
 
+plugins:
+  - serverless-offline
+
 provider:
   name: aws
   runtime: nodejs18.x
@@ -64,6 +67,13 @@ functions:
     events:
       - httpApi:
           path: /products
+          method: get
+
+  getProductsById:
+    handler: handler.getProductsById
+    events:
+      - httpApi:
+          path: /products/{productId}
           method: get
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
