@@ -34,9 +34,14 @@ provider:
   # you can add statements to the Lambda function's IAM Role here
   iamRoleStatements:
     - Effect: "Allow"
+      Action: "s3:ListBucket"
+      Resource:
+        - "arn:aws:s3:::aws-course-bucket-task5"
+    - Effect: "Allow"
       Action:
-        - "s3:PutObject"
-      Resource: "arn:aws:s3:::aws-course-bucket-task5/*"
+        - "s3:*"
+      Resource:
+        - "arn:aws:s3:::aws-course-bucket-task5/*"
 #  iam:
 #    role:
 #      statements:
@@ -77,6 +82,15 @@ functions:
             parameters:
               querystrings:
                 name: true
+  importFileParser:
+    handler: handler.importFileParser
+    events:
+      - s3:
+          bucket: aws-course-bucket-task5
+          event: s3:ObjectCreated:*
+          rules:
+            - prefix: uploaded/
+          existing: true
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
 #    Check the event documentation for details
