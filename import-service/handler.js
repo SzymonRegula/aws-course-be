@@ -1,18 +1,31 @@
-'use strict';
+"use strict";
 
-module.exports.hello = async (event) => {
-  return {
-    statusCode: 200,
-    body: JSON.stringify(
-      {
-        message: 'Go Serverless v1.0! Your function executed successfully!',
-        input: event,
-      },
-      null,
-      2
-    ),
+const AWS = require("aws-sdk");
+const s3 = new AWS.S3({ region: "us-east-1" });
+
+module.exports.importProductsFile = async (event) => {
+  const fileName = event.queryStringParameters.name;
+  const params = {
+    Bucket: "aws-course-bucket-task5",
+    Key: `uploaded/${fileName}`,
+    Expires: 60,
+    ContentType: "text/csv",
   };
 
-  // Use this code if you don't use the http event with the LAMBDA-PROXY integration
-  // return { message: 'Go Serverless v1.0! Your function executed successfully!', event };
+  try {
+    const signedUrl = await s3.getSignedUrlPromise("putObject", params);
+
+    return {
+      statusCode: 200,
+      headers: { "Access-Control-Allow-Origin": "*" },
+      body: JSON.stringify(signedUrl),
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      statusCode: 500,
+      headers: { "Access-Control-Allow-Origin": "*" },
+      body: JSON.stringify({ message: "Error generating signed URL" }),
+    };
+  }
 };

@@ -2,5 +2,8 @@
   "dependencies": {
     "aws-sdk": "^2.1568.0",
     "csv-parser": "^3.0.0"
+  },
+  "devDependencies": {
+    "serverless-offline": "^13.3.3"
   }
 }
