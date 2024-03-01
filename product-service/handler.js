@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require("uuid");
 
 const AWS = require("aws-sdk");
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
+const sns = new AWS.SNS();
 
 module.exports.getProductsList = async (event) => {
   const productsParams = {
@@ -122,22 +123,28 @@ module.exports.createProduct = async (event) => {
 };
 
 module.exports.catalogBatchProcess = async (event) => {
-  console.log(event);
-  for (const record of event.Records) {
-    const { id, title, description, price } = JSON.parse(record.body);
-    const params = {
-      TableName: "Products_aws-course",
-      Item: {
-        id: id ? id : uuidv4(),
-        title: title ? title : "No title",
-        description: description ? description : "No description",
-        price: price ? price : 0,
-      },
-    };
+  const records = event.Records.map((record) => JSON.parse(record.body));
 
+  for (const record of records) {
+    const { id, title, description, price } = record;
+    const item = {
+      id: id ? id : uuidv4(),
+      title: title ? title : "No title",
+      description: description ? description : "No description",
+      price: price ? price : 0,
+    };
+    const dynamoParams = {
+      TableName: "Products_aws-course",
+      Item: item,
+    };
+    const snsParams = {
+      Message: `Product created: ${JSON.stringify(item, null, 2)}`,
+      TopicArn: process.env.SNS_TOPIC_ARN,
+    };
     try {
-      await dynamoDb.put(params).promise();
-      console.log(`Product created: ${product}`);
+      await dynamoDb.put(dynamoParams).promise();
+      await sns.publish(snsParams).promise();
+      console.log(`Product created: ${item.id}`);
     } catch (error) {
       console.error(`Error creating product: ${error}`);
     }

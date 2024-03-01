@@ -50,6 +50,10 @@ provider:
             - Fn::GetAtt:
                 - catalogItemsQueue
                 - Arn
+        - Effect: "Allow"
+          Action: "sns:Publish"
+          Resource:
+            Ref: createProductTopic
 
   #        - Effect: "Allow"
   #          Action:
@@ -65,7 +69,8 @@ provider:
   environment:
     PRODUCTS_TABLE_NAME: Products_aws-course
     STOCKS_TABLE_NAME: Stocks_aws-course
-
+    SNS_TOPIC_ARN:
+      Ref: createProductTopic
 # you can add packaging information here
 #package:
 #  patterns:
@@ -149,6 +154,19 @@ resources:
       Type: "AWS::SQS::Queue"
       Properties:
         QueueName: catalogItemsQueue
+
+    createProductTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: createProductTopic
+
+    createProductTopicSubscription:
+      Type: AWS::SNS::Subscription
+      Properties:
+        Endpoint: szymon.regula@gmail.com
+        Protocol: email
+        TopicArn:
+          Ref: createProductTopic
 #resources:
 #  Resources:
 #    NewResource:
