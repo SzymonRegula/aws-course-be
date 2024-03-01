@@ -42,6 +42,9 @@ provider:
         - "s3:*"
       Resource:
         - "arn:aws:s3:::aws-course-bucket-task5/*"
+    - Effect: "Allow"
+      Action: "sqs:SendMessage"
+      Resource: "arn:aws:sqs:us-east-1:471112844126:catalogItemsQueue"
 #  iam:
 #    role:
 #      statements:

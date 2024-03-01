@@ -41,6 +41,19 @@ provider:
           Resource:
             - "arn:aws:dynamodb:us-east-1:471112844126:table/Products_aws-course"
             - "arn:aws:dynamodb:us-east-1:471112844126:table/Stocks_aws-course"
+        - Effect: "Allow"
+          Action:
+            - "sqs:ReceiveMessage"
+            - "sqs:DeleteMessage"
+            - "sqs:GetQueueAttributes"
+          Resource:
+            - Fn::GetAtt:
+                - catalogItemsQueue
+                - Arn
+        - Effect: "Allow"
+          Action: "sns:Publish"
+          Resource:
+            Ref: createProductTopic
 
   #        - Effect: "Allow"
   #          Action:
@@ -56,7 +69,8 @@ provider:
   environment:
     PRODUCTS_TABLE_NAME: Products_aws-course
     STOCKS_TABLE_NAME: Stocks_aws-course
-
+    SNS_TOPIC_ARN:
+      Ref: createProductTopic
 # you can add packaging information here
 #package:
 #  patterns:
@@ -84,6 +98,15 @@ functions:
       - httpApi:
           path: /products
           method: post
+  catalogBatchProcess:
+    handler: handler.catalogBatchProcess
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - catalogItemsQueue
+              - Arn
+          batchSize: 5
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
 #    Check the event documentation for details
@@ -125,6 +148,25 @@ functions:
 #      variable2: value2
 
 # you can add CloudFormation resource templates here
+resources:
+  Resources:
+    catalogItemsQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: catalogItemsQueue
+
+    createProductTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: createProductTopic
+
+    createProductTopicSubscription:
+      Type: AWS::SNS::Subscription
+      Properties:
+        Endpoint: szymon.regula@gmail.com
+        Protocol: email
+        TopicArn:
+          Ref: createProductTopic
 #resources:
 #  Resources:
 #    NewResource:
