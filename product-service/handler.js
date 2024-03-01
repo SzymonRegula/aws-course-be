@@ -120,3 +120,26 @@ module.exports.createProduct = async (event) => {
     };
   }
 };
+
+module.exports.catalogBatchProcess = async (event) => {
+  console.log(event);
+  for (const record of event.Records) {
+    const { id, title, description, price } = JSON.parse(record.body);
+    const params = {
+      TableName: "Products_aws-course",
+      Item: {
+        id: id ? id : uuidv4(),
+        title: title ? title : "No title",
+        description: description ? description : "No description",
+        price: price ? price : 0,
+      },
+    };
+
+    try {
+      await dynamoDb.put(params).promise();
+      console.log(`Product created: ${product}`);
+    } catch (error) {
+      console.error(`Error creating product: ${error}`);
+    }
+  }
+};
