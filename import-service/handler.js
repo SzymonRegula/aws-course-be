@@ -3,6 +3,7 @@
 const AWS = require("aws-sdk");
 const csv = require("csv-parser");
 const s3 = new AWS.S3({ region: "us-east-1" });
+const sqs = new AWS.SQS();
 
 module.exports.importProductsFile = async (event) => {
   const fileName = event.queryStringParameters.name;
@@ -31,8 +32,17 @@ module.exports.importProductsFile = async (event) => {
   }
 };
 
+async function sendMessageToSQS(data) {
+  const params = {
+    MessageBody: JSON.stringify(data),
+    QueueUrl:
+      "https://sqs.us-east-1.amazonaws.com/471112844126/catalogItemsQueue",
+  };
+  return sqs.sendMessage(params).promise();
+}
+
 module.exports.importFileParser = async (event) => {
-  const promises = event.Records.map(
+  const filePromises = event.Records.map(
     (record) =>
       new Promise((resolve, reject) => {
         try {
@@ -45,14 +55,20 @@ module.exports.importFileParser = async (event) => {
 
           console.log(`Starting to process file ${record.s3.object.key}...`);
 
+          const messagePromises = [];
+
           s3Stream
             .pipe(csv())
             .on("data", (data) => {
               console.log(data);
+              messagePromises.push(sendMessageToSQS(data));
             })
             .on("end", () => {
               console.log(`File ${record.s3.object.key} has been processed.`);
-              resolve();
+              Promise.all(messagePromises).then(() => {
+                console.log(`Messages have been sent to SQS`);
+                resolve();
+              });
             });
         } catch (error) {
           console.error("Error processing file:", error);
@@ -61,5 +77,5 @@ module.exports.importFileParser = async (event) => {
       })
   );
 
-  await Promise.all(promises);
+  await Promise.all(filePromises);
 };
