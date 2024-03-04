@@ -11,7 +11,7 @@
 #
 # Happy Coding!
 
-service: import-service
+service: authorization-service
 # app and org for use with dashboard.serverless.com
 #app: your-app-name
 #org: your-org-name
@@ -21,51 +21,37 @@ service: import-service
 frameworkVersion: "3"
 
 plugins:
-  - serverless-offline
+  - serverless-dotenv-plugin
 
 provider:
   name: aws
   runtime: nodejs18.x
+  region: us-east-1
 
   # you can overwrite defaults here
   #  stage: dev
   #  region: us-east-1
 
   # you can add statements to the Lambda function's IAM Role here
-  iamRoleStatements:
-    - Effect: "Allow"
-      Action: "s3:ListBucket"
-      Resource:
-        - "arn:aws:s3:::aws-course-bucket-task5"
-    - Effect: "Allow"
-      Action:
-        - "s3:*"
-      Resource:
-        - "arn:aws:s3:::aws-course-bucket-task5/*"
-    - Effect: "Allow"
-      Action: "sqs:SendMessage"
-      Resource: "arn:aws:sqs:us-east-1:471112844126:catalogItemsQueue"
-#  iam:
-#    role:
-#      statements:
-#        - Effect: "Allow"
-#          Action:
-#            - "s3:ListBucket"
-#          Resource: { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "ServerlessDeploymentBucket" } ] ]  }
-#        - Effect: "Allow"
-#          Action:
-#            - "s3:PutObject"
-#          Resource:
-#            Fn::Join:
-#              - ""
-#              - - "arn:aws:s3:::"
-#                - "Ref" : "ServerlessDeploymentBucket"
-#                - "/*"
+  #  iam:
+  #    role:
+  #      statements:
+  #        - Effect: "Allow"
+  #          Action:
+  #            - "s3:ListBucket"
+  #          Resource: { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "ServerlessDeploymentBucket" } ] ]  }
+  #        - Effect: "Allow"
+  #          Action:
+  #            - "s3:PutObject"
+  #          Resource:
+  #            Fn::Join:
+  #              - ""
+  #              - - "arn:aws:s3:::"
+  #                - "Ref" : "ServerlessDeploymentBucket"
+  #                - "/*"
 
-# you can define service wide environment variables here
-#  environment:
-#    variable1: value1
-
+  # you can define service wide environment variables here
+  environment:
 # you can add packaging information here
 #package:
 #  patterns:
@@ -75,31 +61,8 @@ provider:
 #    - include-me-dir/**
 
 functions:
-  importProductsFile:
-    handler: handler.importProductsFile
-    events:
-      - http:
-          path: /import
-          method: get
-          cors: true
-          authorizer:
-            type: request
-            name: basicAuthorizer
-            arn: arn:aws:lambda:us-east-1:471112844126:function:authorization-service-dev-basicAuthorizer
-            resultTtlInSeconds: 0
-          request:
-            parameters:
-              querystrings:
-                name: true
-  importFileParser:
-    handler: handler.importFileParser
-    events:
-      - s3:
-          bucket: aws-course-bucket-task5
-          event: s3:ObjectCreated:*
-          rules:
-            - prefix: uploaded/
-          existing: true
+  basicAuthorizer:
+    handler: handler.basicAuthorizer
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
 #    Check the event documentation for details
